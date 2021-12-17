@@ -54,7 +54,7 @@ class Stripe implements ProviderInterface
                     'product_data' => [
                         'name' => $product->getName(),
                     ],
-                    'unit_amount' => $product->getPrice(),
+                    'unit_amount' => (int) ($product->getPrice() * 100),
                 ],
                 'quantity' => 1,
             ]],
