@@ -1,0 +1,32 @@
+{
+  "name": "fusio/adapter-stripe",
+  "description": "Provides connections to work with the Stripe API",
+  "homepage": "https://www.fusio-project.org",
+  "keywords": ["fusio-adapter"],
+  "license": "AGPL-3.0",
+  "authors": [
+    {
+      "name": "Christoph Kappestein",
+      "email": "christoph.kappestein@gmail.com",
+      "homepage": "https://chrisk.app"
+    }
+  ],
+  "require": {
+    "php": ">=7.2",
+    "fusio/engine": "^4.0",
+    "stripe/stripe-php": "^7.107"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Fusio\\Adapter\\Stripe\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Fusio\\Adapter\\Stripe\\Tests\\": "tests/"
+    }
+  }
+}
