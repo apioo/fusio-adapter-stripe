@@ -83,7 +83,7 @@ class Stripe implements ProviderInterface
         $this->updateTransaction($session, $transaction);
     }
 
-    private function getClient(mixed $connection): StripeClient
+    private function getClient($connection): StripeClient
     {
         if ($connection instanceof StripeClient) {
             return $connection;
