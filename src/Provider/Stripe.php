@@ -3,7 +3,7 @@
  * Fusio
  * A web-application to create dynamically RESTful APIs
  *
- * Copyright (C) 2015-2021 Christoph Kappestein <christoph.kappestein@gmail.com>
+ * Copyright (C) 2015-2022 Christoph Kappestein <christoph.kappestein@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -35,14 +35,11 @@ use Stripe\StripeClient;
  *
  * @author  Christoph Kappestein <christoph.kappestein@gmail.com>
  * @license http://www.gnu.org/licenses/agpl-3.0
- * @link    http://fusio-project.org
+ * @link    https://www.fusio-project.org/
  */
 class Stripe implements ProviderInterface
 {
-    /**
-     * @inheritdoc
-     */
-    public function prepare($connection, ProductInterface $product, TransactionInterface $transaction, PrepareContext $context)
+    public function prepare(mixed $connection, ProductInterface $product, TransactionInterface $transaction, PrepareContext $context): string
     {
         $client = $this->getClient($connection);
 
@@ -70,10 +67,7 @@ class Stripe implements ProviderInterface
         return $session->url;
     }
 
-    /**
-     * @inheritdoc
-     */
-    public function execute($connection, ProductInterface $product, TransactionInterface $transaction, ParametersInterface $parameters)
+    public function execute($connection, ProductInterface $product, TransactionInterface $transaction, ParametersInterface $parameters): void
     {
         $client = $this->getClient($connection);
 
