@@ -22,13 +22,15 @@
 namespace Fusio\Adapter\Stripe\Provider;
 
 use Fusio\Engine\Model\ProductInterface;
-use Fusio\Engine\Model\TransactionInterface;
-use Fusio\Engine\ParametersInterface;
-use Fusio\Engine\Payment\PrepareContext;
+use Fusio\Engine\Model\UserInterface;
 use Fusio\Engine\Payment\ProviderInterface;
+use Fusio\Engine\Payment\WebhookInterface;
 use PSX\Http\Exception as StatusCode;
+use PSX\Http\RequestInterface;
 use Stripe\Checkout\Session;
+use Stripe\Invoice;
 use Stripe\StripeClient;
+use Stripe\Webhook;
 
 /**
  * Stripe
@@ -39,13 +41,18 @@ use Stripe\StripeClient;
  */
 class Stripe implements ProviderInterface
 {
-    public function prepare(mixed $connection, ProductInterface $product, TransactionInterface $transaction, PrepareContext $context): string
+    public function checkout(mixed $connection, ProductInterface $product, UserInterface $user, CheckoutContext $context): string
     {
         $client = $this->getClient($connection);
 
-        // create checkout
-        $session = $client->checkout->sessions->create([
-            'line_items' => [[
+        $externalId = $product->getExternalId();
+        if (!empty($externalId)) {
+            // in case the product contains an external id to a price object use this id
+            $item = [
+                'price' => $externalId,
+            ];
+        } else {
+            $item = [
                 'price_data' => [
                     'currency' => $context->getCurrency(),
                     'product_data' => [
@@ -53,28 +60,113 @@ class Stripe implements ProviderInterface
                     ],
                     'unit_amount' => (int) ($product->getPrice() * 100),
                 ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-            'client_reference_id' => $transaction->getId(),
+            ];
+        }
+
+        $item['quantity'] = 1;
+
+        if (empty($product->getInterval())) {
+            $mode = 'payment';
+        } else {
+            $mode = 'subscription';
+        }
+
+        $config = [
+            'line_items' => [$item],
+            'mode' => $mode,
+            'client_reference_id' => $user->getId(),
             'success_url' => $context->getReturnUrl() . '?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $context->getCancelUrl(),
-        ]);
+            'metadata' => [
+                'user_id' => $user->getId(),
+                'product_id' => $product->getId(),
+            ]
+        ];
 
-        // update transaction details
-        $this->updateTransaction($session, $transaction);
+        if (!empty($user->getExternalId())) {
+            $config['customer'] = $user->getExternalId();
+        } elseif (!empty($user->getEmail())) {
+            $config['customer_email'] = $user->getEmail();
+        }
+
+        $session = $client->checkout->sessions->create($config);
 
         return $session->url;
     }
 
-    public function execute($connection, ProductInterface $product, TransactionInterface $transaction, ParametersInterface $parameters): void
+    public function portal(mixed $connection, UserInterface $user, string $returnUrl): ?string
     {
         $client = $this->getClient($connection);
 
-        $session = $client->checkout->sessions->retrieve($parameters->get('session_id'));
+        $externalId = $user->getExternalId();
+        if (!empty($externalId)) {
+            $session = $client->billingPortal->sessions->create([
+                'customer' => $externalId,
+                'return_url' => $returnUrl,
+            ]);
+            return $session->url;
+        } else {
+            return null;
+        }
+    }
 
-        // update transaction details
-        $this->updateTransaction($session, $transaction);
+    public function webhook(RequestInterface $request, WebhookInterface $webhook, ?string $webhookSecret = null): void
+    {
+        if (empty($webhookSecret)) {
+            throw new StatusCode\InternalServerErrorException('No webhook secret was configured');
+        }
+
+        try {
+            $event = Webhook::constructEvent(
+                (string) $request->getBody(),
+                $request->getHeader('stripe-signature'),
+                $webhookSecret
+            );
+        } catch (\Exception $e) {
+            throw new StatusCode\ForbiddenException($e->getMessage(), $e);
+        }
+
+        $object = $event->data;
+
+        switch ($event->type) {
+            case 'checkout.session.completed':
+                // Payment is successful and the subscription is created.
+                // You should provision the subscription and save the customer ID to your database.
+                if ($object instanceof Session) {
+                    $userId = (int) $object->metadata['user_id'];
+                    $productId = (int) $object->metadata['product_id'];
+                    $externalId = $object->customer->id;
+                    $amountTotal = $object->amount_total;
+                    $sessionId = $object->id;
+
+                    $webhook->completed($userId, $productId, $externalId, $amountTotal, $sessionId);
+                }
+                break;
+
+            case 'invoice.paid':
+                // Continue to provision the subscription as payments continue to be made.
+                // Store the status in your database and check when a user accesses your service.
+                // This approach helps you avoid hitting rate limits.
+                if ($object instanceof Invoice) {
+                    $externalId = $object->customer->id;
+                    $amountPaid = $object->amount_paid;
+                    $invoiceId = $object->id;
+
+                    $webhook->paid($externalId, $amountPaid, $invoiceId);
+                }
+                break;
+
+            case 'invoice.payment_failed':
+                // The payment failed or the customer does not have a valid payment method.
+                // The subscription becomes past_due. Notify your customer and send them to the
+                // customer portal to update their payment information.
+                if ($object instanceof Invoice) {
+                    $externalId = $object->customer->id;
+
+                    $webhook->failed($externalId);
+                }
+                break;
+        }
     }
 
     private function getClient($connection): StripeClient
@@ -84,24 +176,5 @@ class Stripe implements ProviderInterface
         } else {
             throw new StatusCode\InternalServerErrorException('Connection must return a Stripe Client');
         }
-    }
-
-    private function updateTransaction(Session $session, TransactionInterface $transaction): void
-    {
-        $transaction->setStatus($this->getTransactionStatus($session));
-        $transaction->setRemoteId($session->id);
-    }
-
-    private function getTransactionStatus(Session $session): int
-    {
-        if ($session->status == Session::STATUS_OPEN) {
-            return TransactionInterface::STATUS_CREATED;
-        } elseif ($session->status == Session::STATUS_COMPLETE) {
-            return TransactionInterface::STATUS_APPROVED;
-        } elseif ($session->status == Session::STATUS_EXPIRED) {
-            return TransactionInterface::STATUS_FAILED;
-        }
-
-        return TransactionInterface::STATUS_UNKNOWN;
     }
 }
