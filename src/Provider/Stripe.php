@@ -23,6 +23,7 @@ namespace Fusio\Adapter\Stripe\Provider;
 
 use Fusio\Engine\Model\ProductInterface;
 use Fusio\Engine\Model\UserInterface;
+use Fusio\Engine\Payment\CheckoutContext;
 use Fusio\Engine\Payment\ProviderInterface;
 use Fusio\Engine\Payment\WebhookInterface;
 use PSX\Http\Exception as StatusCode;
