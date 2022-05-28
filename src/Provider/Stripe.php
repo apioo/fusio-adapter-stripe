@@ -136,7 +136,7 @@ class Stripe implements ProviderInterface
                 if ($object instanceof Session) {
                     $userId = (int) $object->metadata['user_id'];
                     $productId = (int) $object->metadata['product_id'];
-                    $externalId = $object->customer->id;
+                    $externalId = $object->customer;
                     $amountTotal = $object->amount_total;
                     $sessionId = $object->id;
 
@@ -149,7 +149,7 @@ class Stripe implements ProviderInterface
                 // Store the status in your database and check when a user accesses your service.
                 // This approach helps you avoid hitting rate limits.
                 if ($object instanceof Invoice) {
-                    $externalId = $object->customer->id;
+                    $externalId = $object->customer;
                     $amountPaid = $object->amount_paid;
                     $invoiceId = $object->id;
 
@@ -162,7 +162,7 @@ class Stripe implements ProviderInterface
                 // The subscription becomes past_due. Notify your customer and send them to the
                 // customer portal to update their payment information.
                 if ($object instanceof Invoice) {
-                    $externalId = $object->customer->id;
+                    $externalId = $object->customer;
 
                     $webhook->failed($externalId);
                 }
