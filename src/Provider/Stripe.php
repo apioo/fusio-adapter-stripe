@@ -127,12 +127,11 @@ class Stripe implements ProviderInterface
             throw new StatusCode\ForbiddenException($e->getMessage(), $e);
         }
 
-        $object = $event->data;
-
         switch ($event->type) {
             case 'checkout.session.completed':
                 // Payment is successful and the subscription is created.
                 // You should provision the subscription and save the customer ID to your database.
+                $object = $event->data->object ?? null;
                 if ($object instanceof Session) {
                     $userId = (int) $object->metadata['user_id'];
                     $productId = (int) $object->metadata['product_id'];
@@ -148,6 +147,7 @@ class Stripe implements ProviderInterface
                 // Continue to provision the subscription as payments continue to be made.
                 // Store the status in your database and check when a user accesses your service.
                 // This approach helps you avoid hitting rate limits.
+                $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
                     $externalId = $object->customer;
                     $amountPaid = $object->amount_paid;
@@ -161,6 +161,7 @@ class Stripe implements ProviderInterface
                 // The payment failed or the customer does not have a valid payment method.
                 // The subscription becomes past_due. Notify your customer and send them to the
                 // customer portal to update their payment information.
+                $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
                     $externalId = $object->customer;
 
