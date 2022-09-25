@@ -95,16 +95,22 @@ class Stripe implements ProviderInterface
         return $session->url;
     }
 
-    public function portal(mixed $connection, UserInterface $user, string $returnUrl): ?string
+    public function portal(mixed $connection, UserInterface $user, string $returnUrl, ?string $configurationId = null): ?string
     {
         $client = $this->getClient($connection);
 
         $externalId = $user->getExternalId();
         if (!empty($externalId)) {
-            $session = $client->billingPortal->sessions->create([
+            $params = [
                 'customer' => $externalId,
                 'return_url' => $returnUrl,
-            ]);
+            ];
+
+            if (!empty($configurationId)) {
+                $params['configuration'] = $configurationId;
+            }
+
+            $session = $client->billingPortal->sessions->create($params);
             return $session->url;
         } else {
             return null;
