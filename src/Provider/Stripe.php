@@ -158,10 +158,10 @@ class Stripe implements ProviderInterface
                     $externalId = $object->customer;
                     $amountPaid = $object->amount_paid;
                     $invoiceId = $object->id;
-                    $startDate = new \DateTimeImmutable('@' . $object->period_start);
-                    $endDate = new \DateTimeImmutable('@' . $object->period_end);
+                    $periodStart = new \DateTimeImmutable('@' . $object->period_start);
+                    $periodEnd = new \DateTimeImmutable('@' . $object->period_end);
 
-                    $webhook->paid($externalId, $amountPaid, $invoiceId, $startDate, $endDate);
+                    $webhook->paid($externalId, $amountPaid, $invoiceId, $periodStart, $periodEnd);
                 }
                 break;
 
