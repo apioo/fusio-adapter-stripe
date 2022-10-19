@@ -135,45 +135,23 @@ class Stripe implements ProviderInterface
 
         switch ($event->type) {
             case 'checkout.session.completed':
-                // Payment is successful and the subscription is created.
-                // You should provision the subscription and save the customer ID to your database.
                 $object = $event->data->object ?? null;
                 if ($object instanceof Session) {
-                    $userId = (int) $object->metadata['user_id'];
-                    $productId = (int) $object->metadata['product_id'];
-                    $externalId = $object->customer;
-                    $amountTotal = $object->amount_total;
-                    $sessionId = $object->id;
-
-                    $webhook->completed($userId, $productId, $externalId, $amountTotal, $sessionId);
+                    $this->handleCheckoutSessionCompleted($object, $webhook);
                 }
                 break;
 
             case 'invoice.paid':
-                // Continue to provision the subscription as payments continue to be made.
-                // Store the status in your database and check when a user accesses your service.
-                // This approach helps you avoid hitting rate limits.
                 $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
-                    $externalId = $object->customer;
-                    $amountPaid = $object->amount_paid;
-                    $invoiceId = $object->id;
-                    $periodStart = new \DateTimeImmutable('@' . $object->period_start);
-                    $periodEnd = new \DateTimeImmutable('@' . $object->period_end);
-
-                    $webhook->paid($externalId, $amountPaid, $invoiceId, $periodStart, $periodEnd);
+                    $this->handleInvoicePaid($object, $webhook);
                 }
                 break;
 
             case 'invoice.payment_failed':
-                // The payment failed or the customer does not have a valid payment method.
-                // The subscription becomes past_due. Notify your customer and send them to the
-                // customer portal to update their payment information.
                 $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
-                    $externalId = $object->customer;
-
-                    $webhook->failed($externalId);
+                    $this->handleInvoicePaymentFailed($object, $webhook);
                 }
                 break;
         }
@@ -186,5 +164,58 @@ class Stripe implements ProviderInterface
         } else {
             throw new StatusCode\InternalServerErrorException('Connection must return a Stripe Client');
         }
+    }
+
+    /**
+     * Payment is successful and the subscription is created.
+     * You should provision the subscription and save the customer ID to your database.
+     */
+    private function handleCheckoutSessionCompleted(Session $object, WebhookInterface $webhook): void
+    {
+        $userId = (int) $object->metadata['user_id'];
+        $productId = (int) $object->metadata['product_id'];
+        $externalId = $object->customer;
+        $amountTotal = $object->amount_total;
+        $sessionId = $object->id;
+
+        $webhook->completed($userId, $productId, $externalId, $amountTotal, $sessionId);
+    }
+
+    /**
+     * Continue to provision the subscription as payments continue to be made.
+     * Store the status in your database and check when a user accesses your service.
+     * This approach helps you avoid hitting rate limits.
+     */
+    private function handleInvoicePaid(Invoice $object, WebhookInterface $webhook): void
+    {
+        $externalId = $object->customer;
+        $amountPaid = $object->amount_paid;
+        $invoiceId = $object->id;
+
+        $startDate = new \DateTimeImmutable();
+        $endDate = new \DateTimeImmutable();
+        foreach ($object->lines->data as $item) {
+            if (isset($item->period->start)) {
+                $startDate = new \DateTimeImmutable('@' . $item->period->start);
+            }
+
+            if (isset($item->period->end)) {
+                $endDate = new \DateTimeImmutable('@' . $item->period->end);
+            }
+        }
+
+        $webhook->paid($externalId, $amountPaid, $invoiceId, $startDate, $endDate);
+    }
+
+    /**
+     * The payment failed or the customer does not have a valid payment method.
+     * The subscription becomes past_due. Notify your customer and send them to the
+     * customer portal to update their payment information.
+     */
+    private function handleInvoicePaymentFailed(Invoice $object, WebhookInterface $webhook): void
+    {
+        $externalId = $object->customer;
+
+        $webhook->failed($externalId);
     }
 }
