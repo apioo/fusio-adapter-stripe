@@ -81,6 +81,7 @@ class Stripe implements ProviderInterface
             'metadata' => [
                 'user_id' => $user->getId(),
                 'product_id' => $product->getId(),
+                'domain' => $context->getDomain(),
             ]
         ];
 
@@ -117,7 +118,7 @@ class Stripe implements ProviderInterface
         }
     }
 
-    public function webhook(RequestInterface $request, WebhookInterface $webhook, ?string $webhookSecret = null): void
+    public function webhook(RequestInterface $request, WebhookInterface $webhook, ?string $webhookSecret = null, ?string $domain = null): void
     {
         if (empty($webhookSecret)) {
             throw new StatusCode\InternalServerErrorException('No webhook secret was configured');
@@ -137,6 +138,11 @@ class Stripe implements ProviderInterface
             case 'checkout.session.completed':
                 $object = $event->data->object ?? null;
                 if ($object instanceof Session) {
+                    if ($domain !== null && isset($object->metadata['domain']) && $domain !== $object->metadata['domain']) {
+                        // the checkout does not belong to this domain
+                        return;
+                    }
+
                     $this->handleCheckoutSessionCompleted($object, $webhook);
                 }
                 break;
