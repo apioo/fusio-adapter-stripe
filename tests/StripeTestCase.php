@@ -3,7 +3,7 @@
  * Fusio
  * A web-application to create dynamically RESTful APIs
  *
- * Copyright (C) 2015-2023 Christoph Kappestein <christoph.kappestein@gmail.com>
+ * Copyright (C) 2015-2018 Christoph Kappestein <christoph.kappestein@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,21 +19,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace Fusio\Adapter\Stripe;
+namespace Fusio\Adapter\Stripe\Tests;
 
-use Fusio\Engine\AdapterInterface;
+use Fusio\Adapter\Stripe\Connection\Stripe;
+use Fusio\Adapter\Stripe\Payment\Stripe as StripePayment;
+use Fusio\Engine\Action\Runtime;
+use Fusio\Engine\Test\EngineTestCaseTrait;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\DependencyInjection\Container;
 
 /**
- * Adapter
+ * SqlTestCase
  *
  * @author  Christoph Kappestein <christoph.kappestein@gmail.com>
  * @license http://www.gnu.org/licenses/agpl-3.0
  * @link    https://www.fusio-project.org/
  */
-class Adapter implements AdapterInterface
+class StripeTestCase extends TestCase
 {
-    public function getContainerFile(): string
+    use EngineTestCaseTrait;
+
+    protected function configure(Runtime $runtime, Container $container): void
     {
-        return __DIR__ . '/../resources/container.php';
+        $container->set(Stripe::class, new Stripe());
+        $container->set(StripePayment::class, new StripePayment());
     }
 }

@@ -1,8 +1,0 @@
-{
-  "connectionClass": [
-    "Fusio\\Adapter\\Stripe\\Connection\\Stripe"
-  ],
-  "paymentClass": [
-    "Fusio\\Adapter\\Stripe\\Provider\\Stripe"
-  ]
-}
