@@ -29,7 +29,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Container;
 
 /**
- * SqlTestCase
+ * StripeTestCase
  *
  * @author  Christoph Kappestein <christoph.kappestein@gmail.com>
  * @license http://www.gnu.org/licenses/agpl-3.0
