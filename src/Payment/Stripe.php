@@ -93,7 +93,7 @@ class Stripe implements ProviderInterface
 
         $session = $client->checkout->sessions->create($config);
 
-        return $session->url;
+        return $session->url ?? '';
     }
 
     public function portal(mixed $connection, UserInterface $user, string $returnUrl, ?string $configurationId = null): ?string
@@ -118,7 +118,7 @@ class Stripe implements ProviderInterface
         }
     }
 
-    public function webhook(RequestInterface $request, WebhookInterface $webhook, ?string $webhookSecret = null, ?string $domain = null): void
+    public function webhook(RequestInterface $request, WebhookInterface $handler, ?string $webhookSecret = null, ?string $domain = null): void
     {
         if (empty($webhookSecret)) {
             throw new StatusCode\InternalServerErrorException('No webhook secret was configured');
@@ -143,27 +143,27 @@ class Stripe implements ProviderInterface
                         return;
                     }
 
-                    $this->handleCheckoutSessionCompleted($object, $webhook);
+                    $this->handleCheckoutSessionCompleted($object, $handler);
                 }
                 break;
 
             case 'invoice.paid':
                 $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
-                    $this->handleInvoicePaid($object, $webhook);
+                    $this->handleInvoicePaid($object, $handler);
                 }
                 break;
 
             case 'invoice.payment_failed':
                 $object = $event->data->object ?? null;
                 if ($object instanceof Invoice) {
-                    $this->handleInvoicePaymentFailed($object, $webhook);
+                    $this->handleInvoicePaymentFailed($object, $handler);
                 }
                 break;
         }
     }
 
-    private function getClient($connection): StripeClient
+    private function getClient(mixed $connection): StripeClient
     {
         if ($connection instanceof StripeClient) {
             return $connection;
@@ -178,13 +178,23 @@ class Stripe implements ProviderInterface
      */
     private function handleCheckoutSessionCompleted(Session $object, WebhookInterface $webhook): void
     {
-        $userId = (int) $object->metadata['user_id'];
-        $productId = (int) $object->metadata['product_id'];
+        $metadata = $object->metadata;
+        if (empty($metadata)) {
+            return;
+        }
+        $userId = (int) $metadata['user_id'];
+        $productId = (int) $metadata['product_id'];
         $externalId = $object->customer;
+        if (!isset($externalId)) {
+            return;
+        }
         $amountTotal = $object->amount_total;
+        if (!isset($amountTotal)) {
+            return;
+        }
         $sessionId = $object->id;
 
-        $webhook->completed($userId, $productId, $externalId, $amountTotal, $sessionId);
+        $webhook->completed($userId, $productId, (string) $externalId, $amountTotal, $sessionId);
     }
 
     /**
@@ -195,8 +205,15 @@ class Stripe implements ProviderInterface
     private function handleInvoicePaid(Invoice $object, WebhookInterface $webhook): void
     {
         $externalId = $object->customer;
+        if (!isset($externalId)) {
+            return;
+        }
+
         $amountPaid = $object->amount_paid;
         $invoiceId = $object->id;
+        if (!isset($invoiceId)) {
+            return;
+        }
 
         $startDate = new \DateTimeImmutable();
         $endDate = new \DateTimeImmutable();
@@ -210,7 +227,7 @@ class Stripe implements ProviderInterface
             }
         }
 
-        $webhook->paid($externalId, $amountPaid, $invoiceId, $startDate, $endDate);
+        $webhook->paid((string) $externalId, $amountPaid, $invoiceId, $startDate, $endDate);
     }
 
     /**
@@ -221,7 +238,10 @@ class Stripe implements ProviderInterface
     private function handleInvoicePaymentFailed(Invoice $object, WebhookInterface $webhook): void
     {
         $externalId = $object->customer;
+        if (!isset($externalId)) {
+            return;
+        }
 
-        $webhook->failed($externalId);
+        $webhook->failed((string) $externalId);
     }
 }
