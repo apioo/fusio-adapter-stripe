@@ -21,12 +21,9 @@
 
 namespace Fusio\Adapter\Stripe\Tests;
 
-use Fusio\Adapter\Stripe\Connection\Stripe;
-use Fusio\Adapter\Stripe\Payment\Stripe as StripePayment;
-use Fusio\Engine\Action\Runtime;
+use Fusio\Adapter\Stripe\Adapter;
 use Fusio\Engine\Test\EngineTestCaseTrait;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\Container;
 
 /**
  * StripeTestCase
@@ -39,9 +36,8 @@ class StripeTestCase extends TestCase
 {
     use EngineTestCaseTrait;
 
-    protected function configure(Runtime $runtime, Container $container): void
+    protected function getAdapterClass(): string
     {
-        $container->set(Stripe::class, new Stripe());
-        $container->set(StripePayment::class, new StripePayment());
+        return Adapter::class;
     }
 }
