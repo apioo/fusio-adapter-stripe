@@ -43,7 +43,7 @@ class Stripe extends ConnectionAbstract
 
     public function getConnection(ParametersInterface $config): StripeClient
     {
-        \Stripe\Stripe::setAppInfo("Fusio", "0.1.0", "https://www.fusio-project.org");
+        \Stripe\Stripe::setAppInfo("Fusio", "4.0.0", "https://www.fusio-project.org");
 
         $options = [
             'api_key' => $config->get('api_key') ?: null,
