@@ -22,6 +22,7 @@ namespace Fusio\Adapter\Stripe\Tests\Connection;
 
 use Fusio\Adapter\Stripe\Connection\Stripe;
 use Fusio\Adapter\Stripe\Tests\StripeTestCase;
+use Fusio\Engine\ConfigurableInterface;
 use Fusio\Engine\Form\Builder;
 use Fusio\Engine\Form\Container;
 use Fusio\Engine\Form\Element\Input;
@@ -37,7 +38,7 @@ use Stripe\StripeClient;
  */
 class StripeTest extends StripeTestCase
 {
-    public function testGetConnection()
+    public function testGetConnection(): void
     {
         /** @var Stripe $connectionFactory */
         $connectionFactory = $this->getConnectionFactory()->factory(Stripe::class);
@@ -52,11 +53,13 @@ class StripeTest extends StripeTestCase
         $this->assertInstanceOf(StripeClient::class, $connection);
     }
 
-    public function testConfigure()
+    public function testConfigure(): void
     {
         $connection = $this->getConnectionFactory()->factory(Stripe::class);
         $builder    = new Builder();
         $factory    = $this->getFormElementFactory();
+
+        $this->assertInstanceOf(ConfigurableInterface::class, $connection);
 
         $connection->configure($builder, $factory);
 

@@ -74,13 +74,13 @@ class Stripe implements ProviderInterface
         $config = [
             'line_items' => [$item],
             'mode' => $mode,
-            'client_reference_id' => $user->getId(),
+            'client_reference_id' => (string) $user->getId(),
             'success_url' => $context->getReturnUrl() . '?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $context->getCancelUrl(),
             'metadata' => [
-                'user_id' => $user->getId(),
-                'product_id' => $product->getId(),
-                'domain' => $context->getDomain(),
+                'user_id' => (string) $user->getId(),
+                'product_id' => (string) $product->getId(),
+                'domain' => (string) $context->getDomain(),
             ]
         ];
 
